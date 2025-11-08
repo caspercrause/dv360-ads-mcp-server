@@ -91,9 +91,19 @@ cp .env.example .env
 
 Edit `.env` and set:
 ```bash
-DV360_SERVICE_ACCOUNT=/full/path/to/your-service-account-key.json
+# Paste the entire service account JSON as a string
+DV360_SERVICE_ACCOUNT={"type":"service_account","project_id":"your-project",...}
 DV360_PARTNER_ID=your_partner_id  # Optional
 ```
+
+**Note**: The service account JSON should be the entire contents of your downloaded service account key file, formatted as a single-line string.
+
+**Formatting options** (both work with dotenv):
+- Without quotes: `DV360_SERVICE_ACCOUNT={"type":"service_account",...}`
+- With single quotes: `DV360_SERVICE_ACCOUNT='{"type":"service_account",...}'`
+- With double quotes: `DV360_SERVICE_ACCOUNT="{"type":"service_account",...}"`
+
+If one format doesn't work in your environment, try another. The dotenv library handles these variations automatically.
 
 ## Configuration for Claude Desktop
 
@@ -479,8 +489,9 @@ The server returns a JSON response with the following structure:
 
 ### Service Account Errors
 - Ensure your service account has access to your DV360 account
-- Verify the JSON key file path is correct
+- Verify the service account JSON is correctly formatted in the DV360_SERVICE_ACCOUNT environment variable
 - Check that the service account has the Display & Video 360 API enabled
+- Make sure the JSON string is properly escaped and quoted in your .env file
 
 ### Query Errors
 - Some dimension/metric combinations are not compatible

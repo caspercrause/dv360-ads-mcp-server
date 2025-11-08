@@ -8,6 +8,7 @@ import os
 import sys
 import csv
 import io
+import json
 from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timedelta
 from contextlib import closing
@@ -44,7 +45,7 @@ DV360_API_NAME = "displayvideo"
 DV360_API_VERSION = "v4"
 DV360_API_SCOPES = ["https://www.googleapis.com/auth/display-video"]
 
-SERVICE_ACCOUNT_FILE = os.getenv("DV360_SERVICE_ACCOUNT")
+SERVICE_ACCOUNT_JSON = os.getenv("DV360_SERVICE_ACCOUNT")
 DEFAULT_PARTNER_ID = os.getenv("DV360_PARTNER_ID")
 
 # Global service instances
@@ -60,26 +61,28 @@ def get_bid_manager_service():
         googleapiclient.discovery.Resource: Bid Manager API service instance
 
     Raises:
-        ValueError: If service account file is not configured
+        ValueError: If service account credentials are not configured
     """
     global _bid_manager_service
 
     if _bid_manager_service is None:
-        if not SERVICE_ACCOUNT_FILE:
+        if not SERVICE_ACCOUNT_JSON:
             raise ValueError(
                 "DV360_SERVICE_ACCOUNT environment variable not set. "
-                "Please set it to the path of your service account JSON file."
+                "Please set it to your service account JSON credentials."
             )
 
-        if not os.path.isfile(SERVICE_ACCOUNT_FILE):
+        try:
+            service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
+        except json.JSONDecodeError as e:
             raise ValueError(
-                f"Service account file not found at: {SERVICE_ACCOUNT_FILE}"
+                f"Invalid JSON in DV360_SERVICE_ACCOUNT environment variable: {e}"
             )
 
-        logger.info(f"Authenticating Bid Manager API with service account: {SERVICE_ACCOUNT_FILE}")
+        logger.info("Authenticating Bid Manager API with service account credentials")
 
-        credentials = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE,
+        credentials = service_account.Credentials.from_service_account_info(
+            service_account_info,
             scopes=BID_MANAGER_API_SCOPES
         )
 
@@ -102,26 +105,28 @@ def get_dv360_service():
         googleapiclient.discovery.Resource: DV360 API service instance
 
     Raises:
-        ValueError: If service account file is not configured
+        ValueError: If service account credentials are not configured
     """
     global _dv360_service
 
     if _dv360_service is None:
-        if not SERVICE_ACCOUNT_FILE:
+        if not SERVICE_ACCOUNT_JSON:
             raise ValueError(
                 "DV360_SERVICE_ACCOUNT environment variable not set. "
-                "Please set it to the path of your service account JSON file."
+                "Please set it to your service account JSON credentials."
             )
 
-        if not os.path.isfile(SERVICE_ACCOUNT_FILE):
+        try:
+            service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
+        except json.JSONDecodeError as e:
             raise ValueError(
-                f"Service account file not found at: {SERVICE_ACCOUNT_FILE}"
+                f"Invalid JSON in DV360_SERVICE_ACCOUNT environment variable: {e}"
             )
 
-        logger.info(f"Authenticating DV360 API with service account: {SERVICE_ACCOUNT_FILE}")
+        logger.info("Authenticating DV360 API with service account credentials")
 
-        credentials = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_FILE,
+        credentials = service_account.Credentials.from_service_account_info(
+            service_account_info,
             scopes=DV360_API_SCOPES
         )
 

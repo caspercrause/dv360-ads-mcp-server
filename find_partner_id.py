@@ -2,21 +2,23 @@
 """Helper script to find your DV360 Partner ID"""
 
 import os
+import json
 from dotenv import load_dotenv
 from googleapiclient import discovery
 from google.oauth2 import service_account
 
 load_dotenv()
 
-SERVICE_ACCOUNT_FILE = os.getenv('DV360_SERVICE_ACCOUNT')
+SERVICE_ACCOUNT_JSON = os.getenv('DV360_SERVICE_ACCOUNT')
 DV360_API_SCOPES = ["https://www.googleapis.com/auth/display-video"]
 
 print('🔍 Attempting to discover Partner ID...\n')
 
 try:
     # Authenticate with DV360 API
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE,
+    service_account_info = json.loads(SERVICE_ACCOUNT_JSON)
+    credentials = service_account.Credentials.from_service_account_info(
+        service_account_info,
         scopes=DV360_API_SCOPES
     )
 
