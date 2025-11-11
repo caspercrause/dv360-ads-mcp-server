@@ -292,7 +292,7 @@ def prepare_dimensions_and_metrics(
 
 
 @mcp.tool()
-def list_advertisers(
+def dv_list_advertisers(
     partner_id: Optional[str] = Field(default=None, description="Partner ID (optional if DV360_PARTNER_ID is set in .env)"),
     page_size: int = Field(default=100, description="Number of advertisers to return per page (max 100)"),
     order_by: Optional[str] = Field(default=None, description="Field to order by (e.g., 'displayName', 'advertiserId')")
@@ -398,7 +398,7 @@ def list_advertisers(
 
 
 @mcp.tool()
-def list_campaigns(
+def dv_list_campaigns(
     advertiser_id: str = Field(..., description="Advertiser ID under which to list campaigns"),
     page_size: int = Field(default=100, description="Number of campaigns to return per page (max 100)"),
     filter: Optional[str] = Field(default=None, description="Filter expression to filter campaigns (e.g., 'entityStatus=\"ENTITY_STATUS_ACTIVE\"')"),
@@ -505,7 +505,7 @@ def list_campaigns(
 
 
 @mcp.tool()
-def get_campaign(
+def dv_get_campaign(
     advertiser_id: str = Field(..., description="Advertiser ID"),
     campaign_id: str = Field(..., description="Campaign ID to retrieve")
 ) -> Dict[str, Any]:
@@ -573,7 +573,7 @@ def get_campaign(
 
 
 @mcp.tool()
-def list_insertion_orders(
+def dv_list_insertion_orders(
     advertiser_id: str = Field(..., description="Advertiser ID under which to list insertion orders"),
     page_size: int = Field(default=100, description="Number of insertion orders to return per page (max 100)"),
     filter: Optional[str] = Field(default=None, description="Filter expression to filter insertion orders (e.g., 'entityStatus=\"ENTITY_STATUS_ACTIVE\"')"),
@@ -682,7 +682,7 @@ def list_insertion_orders(
 
 
 @mcp.tool()
-def get_insertion_order(
+def dv_get_insertion_order(
     advertiser_id: str = Field(..., description="Advertiser ID"),
     insertion_order_id: str = Field(..., description="Insertion Order ID to retrieve")
 ) -> Dict[str, Any]:
@@ -750,7 +750,7 @@ def get_insertion_order(
 
 
 @mcp.tool()
-def list_creatives(
+def dv_list_creatives(
     advertiser_id: str = Field(..., description="Advertiser ID under which to list creatives"),
     page_size: int = Field(default=100, description="Number of creatives to return per page (max 100)"),
     filter: Optional[str] = Field(default=None, description="Filter expression to filter creatives (e.g., 'entityStatus=\"ENTITY_STATUS_ACTIVE\"')"),
@@ -859,7 +859,7 @@ def list_creatives(
 
 
 @mcp.tool()
-def get_creative(
+def dv_get_creative(
     advertiser_id: str = Field(..., description="Advertiser ID"),
     creative_id: str = Field(..., description="Creative ID to retrieve")
 ) -> Dict[str, Any]:
@@ -927,7 +927,7 @@ def get_creative(
 
 
 @mcp.tool()
-def run_report(
+def dv_run_report(
     start_date: str = Field(..., description="Start date in YYYY-MM-DD format (e.g., '2025-01-01')"),
     end_date: str = Field(..., description="End date in YYYY-MM-DD format (e.g., '2025-01-31')"),
     dimensions: Union[List[str], str] = Field(..., description="Dimensions to group by (list or comma-separated string)"),
