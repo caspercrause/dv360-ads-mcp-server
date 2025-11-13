@@ -11,6 +11,7 @@ This server integrates with two Google APIs to provide comprehensive DV360 acces
 
 ## Features
 
+- **Floodlight Conversion Tracking**: Segment conversions by specific floodlight activities (product views, add-to-cart, purchases, etc.)
 - **Entity Management**: List and retrieve campaigns, insertion orders, and creatives with filtering and ordering
 - **Performance Reporting**: Run synchronous reports with comprehensive metrics
 - **Advanced Filtering**: Filter entities by status, dates, and other properties
@@ -264,6 +265,30 @@ advertiser_ids="123, 456"
 
 ## Available Dimensions
 
+### Floodlight Conversion Dimensions (⚡ CRITICAL)
+
+**Segment conversions by specific floodlight activities:**
+
+- `FILTER_FLOODLIGHT_ACTIVITY_ID`: Floodlight Activity ID (unique identifier)
+- `FILTER_FLOODLIGHT_ACTIVITY`: Floodlight Activity Name (human-readable name)
+- `FILTER_ADVERTISER_CURRENCY`: Required when tracking revenue/conversion value
+
+⚠️ **IMPORTANT LIMITATION**: Floodlight dimensions can **ONLY** be used with conversion metrics.
+You **CANNOT** query impressions, clicks, or costs by floodlight activity.
+
+**Compatible metrics with Floodlight dimensions:**
+- ✅ `METRIC_TOTAL_CONVERSIONS` - Total conversions (all attribution)
+- ✅ `METRIC_LAST_CLICKS` - Post-click conversions
+- ✅ `METRIC_LAST_IMPRESSIONS` - Post-view conversions
+- ✅ `METRIC_REVENUE_ADVERTISER` - Conversion value (requires `FILTER_ADVERTISER_CURRENCY`)
+- ❌ Impressions, Clicks, Costs - NOT compatible
+
+**Example conversion actions you can track:**
+- `product_view` - Product page views
+- `add_to_cart` - Items added to cart
+- `purchase` - Purchase completions
+- `sign_up` - Sign up for a service
+
 ### Entity Dimensions
 - `FILTER_ADVERTISER`: Advertiser ID
 - `FILTER_ADVERTISER_NAME`: Advertiser name
@@ -305,10 +330,15 @@ advertiser_ids="123, 456"
 - `METRIC_CLICKS`: Total clicks
 - `METRIC_CTR`: Click-through rate
 
-### Conversion Metrics
-- `METRIC_TOTAL_CONVERSIONS`: Total conversions
-- `METRIC_LAST_CLICKS`: Last-click conversions
-- `METRIC_LAST_IMPRESSIONS`: Last-impression conversions
+### Conversion Metrics (ONLY these work with Floodlight Dimensions)
+- `METRIC_TOTAL_CONVERSIONS`: Total conversions (all types)
+- `METRIC_LAST_CLICKS`: Post-click conversions
+- `METRIC_LAST_IMPRESSIONS`: Post-view conversions
+- `METRIC_REVENUE_ADVERTISER`: Revenue/conversion value (requires `FILTER_ADVERTISER_CURRENCY` dimension)
+
+**Important**: These are the ONLY metrics that can be combined with `FILTER_FLOODLIGHT_ACTIVITY` dimensions!
+
+**Note**: The API uses `METRIC_LAST_CLICKS` and `METRIC_LAST_IMPRESSIONS` (not `METRIC_POST_CLICK_CONVERSIONS` or `METRIC_POST_VIEW_CONVERSIONS`).
 
 ### Cost Metrics
 - `METRIC_MEDIA_COST_ADVERTISER`: Media cost
@@ -419,6 +449,69 @@ report = run_report(
 ```
 
 ## Example Queries
+
+### 🔦 Floodlight Conversion Tracking by Activity
+
+Track specific conversion actions in your customer journey:
+
+```python
+run_report(
+    start_date="2025-11-01",
+    end_date="2025-11-30",
+    dimensions=["FILTER_DATE", "FILTER_FLOODLIGHT_ACTIVITY_ID", "FILTER_FLOODLIGHT_ACTIVITY"],
+    metrics=["METRIC_TOTAL_CONVERSIONS", "METRIC_LAST_CLICKS", "METRIC_LAST_IMPRESSIONS"],
+    advertiser_ids="123456789"
+)
+```
+
+**Example Output:**
+```json
+{
+  "Date": "2025-11-06",
+  "Floodlight Activity ID": 185677093,
+  "Floodlight Activity Name": "product_view",
+  "Total Conversions": 43,
+  "Post-Click Conversions": 8,
+  "Post-View Conversions": 35
+}
+```
+
+This shows the complete conversion funnel:
+- **product_view**: 43 conversions
+- **add_to_cart**: 3 conversions
+- **purchase**: 3 conversions
+
+### 🔦 Floodlight Revenue/Conversion Value Tracking
+
+Track which conversion actions generate revenue:
+
+```python
+run_report(
+    start_date="2025-11-01",
+    end_date="2025-11-30",
+    dimensions=["FILTER_DATE", "FILTER_FLOODLIGHT_ACTIVITY_ID", "FILTER_FLOODLIGHT_ACTIVITY", "FILTER_ADVERTISER_CURRENCY"],
+    metrics=["METRIC_TOTAL_CONVERSIONS", "METRIC_REVENUE_ADVERTISER"],
+    advertiser_ids="123456789"
+)
+```
+
+**Note**: The `FILTER_ADVERTISER_CURRENCY` dimension is required when using `METRIC_REVENUE_ADVERTISER`.
+
+### Floodlight Performance by Campaign
+
+See which campaigns drive specific conversion actions:
+
+```python
+run_report(
+    start_date="2025-11-01",
+    end_date="2025-11-30",
+    dimensions=["FILTER_MEDIA_PLAN_NAME", "FILTER_FLOODLIGHT_ACTIVITY"],
+    metrics=["METRIC_TOTAL_CONVERSIONS", "METRIC_LAST_CLICKS", "METRIC_LAST_IMPRESSIONS"],
+    advertiser_ids="123456789"
+)
+```
+
+**Note**: Cannot include cost or impression metrics when using Floodlight dimensions.
 
 ### Daily Campaign Performance
 ```python
