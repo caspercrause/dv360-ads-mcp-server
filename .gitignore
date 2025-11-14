@@ -48,3 +48,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# HTML Reports
+*.html

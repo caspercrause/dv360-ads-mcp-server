@@ -74,55 +74,128 @@ DV360_PARTNER_ID=your_partner_id
 
 ## Installation
 
-1. **Clone the repository:**
+### Step 1: Create a Virtual Environment
+
+Create a dedicated virtual environment for the DV360 MCP server:
+
 ```bash
-git clone <repository-url>
-cd dv360-ads-mcp-server
+# Create virtual environment
+python3 -m venv dv360_venv
+
+# Activate the virtual environment
+source dv360_venv/bin/activate  # On macOS/Linux
+# OR
+dv360_venv\Scripts\activate     # On Windows
 ```
 
-2. **Install dependencies:**
+**Important**: Keep the virtual environment activated for all subsequent commands.
+
+### Step 2: Clone and Install
+
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd dv360-ads-mcp-server
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-3. **Configure environment variables:**
+### Step 3: Configure Environment Variables
+
+Create the environment configuration file:
+
 ```bash
+# Copy the example file
 cp .env.example .env
 ```
 
-Edit `.env` and set:
+Edit the `.env` file with your credentials:
+
 ```bash
-# Paste the entire service account JSON as a string
-DV360_SERVICE_ACCOUNT={"type":"service_account","project_id":"your-project",...}
-DV360_PARTNER_ID=your_partner_id  # Optional
+# REQUIRED: Your service account JSON (MUST be a single line)
+DV360_SERVICE_ACCOUNT={"type":"service_account","project_id":"your-project","private_key_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n","client_email":"your-service-account@your-project.iam.gserviceaccount.com","client_id":"...","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/your-service-account%40your-project.iam.gserviceaccount.com"}
+
+# OPTIONAL: Your DV360 Partner ID (speeds up advertiser listing)
+DV360_PARTNER_ID=your_partner_id
 ```
 
-**Note**: The service account JSON should be the entire contents of your downloaded service account key file, formatted as a single-line string.
+**REMEMBER**: The `DV360_SERVICE_ACCOUNT` value MUST be the entire JSON content on a single line. Do NOT format it with line breaks.
 
-**Formatting options** (both work with dotenv):
-- Without quotes: `DV360_SERVICE_ACCOUNT={"type":"service_account",...}`
-- With single quotes: `DV360_SERVICE_ACCOUNT='{"type":"service_account",...}'`
-- With double quotes: `DV360_SERVICE_ACCOUNT="{"type":"service_account",...}"`
+**How to get the service account JSON:**
+1. Go to Google Cloud Console → IAM & Admin → Service Accounts
+2. Select your DV360 service account
+3. Go to "Keys" tab → "Add Key" → "Create new key" → JSON
+4. Open the downloaded JSON file
+5. Copy the entire content and paste it as one line in the .env file
 
-If one format doesn't work in your environment, try another. The dotenv library handles these variations automatically.
+### Step 4: Configure MCP in Your AI Client
 
-## Configuration for Claude Desktop
+#### For Claude Desktop:
 
-Add this to your Claude Desktop config file:
+1. Open your Claude Desktop configuration file:
+   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+2. Add the DV360 MCP server configuration:
 
+**Important**: Replace `/full/path/to/` with the actual paths on your system.
+
+#### For Cursor:
+
+1. Open Cursor settings or the Command Palette `⌘ + ⇧ + P`
+2. Go to "MCP Servers" section
+3. Add a new server with:
+   - **Name**: `dv360`
+   - **Command**: `/full/path/to/dv360-ads-mcp-server/dv360_venv/bin/python`
+   - **Arguments**: `/full/path/to/dv360-ads-mcp-server/server.py`
+   
+   **_Optional_**:
+   add Current Working Directory (cwd):
+    - **Current Working Directory**: `/full/path/to/dv360-ads-mcp-server`
+
+#### Example file:
 ```json
 {
   "mcpServers": {
     "dv360": {
-      "command": "python",
-      "args": ["/full/path/to/dv360-ads-mcp-server/server.py"]
+      "command": "/full/path/to/dv360-ads-mcp-server/dv360_venv/bin/python/python",
+      "args": ["/full/path/to/dv360-ads-mcp-server/server.py"],
+      "cwd": "/full/path/to/dv360-ads-mcp-server"
     }
   }
 }
 ```
+
+### Step 5: Restart and Test
+
+1. **Restart your AI client** (Claude Desktop or Cursor) completely
+2. **Test the connection** by asking about DV360 in a new chat
+
+**Expected behavior**: You should see DV360 tools available when you mention DV360-related topics.
+
+### Troubleshooting Setup Issues
+
+#### Virtual Environment Issues:
+```bash
+# Make sure you're in the right directory and venv is activated
+pwd  # Should show dv360-ads-mcp-server
+which python  # Should show path to dv360_venv/bin/python (/full/path/to/dv360-ads-mcp-server)
+```
+
+#### Service Account JSON Issues:
+- Verify the JSON is exactly one line in your `.env` file
+- Check that there are no extra quotes around the JSON
+- Ensure the service account has DV360 API access
+
+#### MCP Configuration Issues:
+- Double-check file paths in the MCP config
+- Ensure the virtual environment Python path is correct
+- Try restarting your AI client after configuration changes
+
+#### Testing the Setup:
+Once configured, try asking: *"List my DV360 advertisers"* in a new chat. If you get a response with advertiser data, the setup is working.
+
 
 ## Available Tools
 
@@ -265,7 +338,7 @@ advertiser_ids="123, 456"
 
 ## Available Dimensions
 
-### Floodlight Conversion Dimensions (⚡ CRITICAL)
+### Floodlight Conversion Dimensions
 
 **Segment conversions by specific floodlight activities:**
 
