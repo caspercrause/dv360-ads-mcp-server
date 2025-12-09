@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DV360 Performance Report - MCP Server Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dv360-teal: #00796b;
+            --dv360-teal-dark: #005f52;
+            --dv360-teal-light: #4db6ac;
+            --dv360-bg: #f5f5f5;
+            --dv360-card: #ffffff;
+            --dv360-text: #202124;
+            --dv360-text-secondary: #5f6368;
+            --dv360-border: #dadce0;
+            --dv360-success: #34a853;
+            --dv360-warning: #fbbc04;
+            --dv360-error: #ea4335;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', 'Google Sans', sans-serif;
+            background-color: var(--dv360-bg);
+            color: var(--dv360-text);
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--dv360-teal) 0%, var(--dv360-teal-dark) 100%);
+            color: white;
+            padding: 32px 48px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .header h1 {
+            font-family: 'Google Sans', sans-serif;
+            font-size: 28px;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .header-meta {
+            display: flex;
+            gap: 32px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .logo-icon {
+            width: 45px;
+            height: 45px;
+            background-image:
+                url('https://lh3.googleusercontent.com/d/1aUv0HUUMEQoSHa3Ykv1Y5Zedvod5MvvX'),
+                url('https://res.cloudinary.com/dnxlpdalu/image/upload/v1686776547/dv360_bcfb2c7348.png'); /* fallback */
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+
+        .header-meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        /* Centered Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 32px;
+            background: var(--dv360-card);
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            color: var(--dv360-text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-family: 'Google Sans', sans-serif;
+        }
+
+        .tab-btn:hover {
+            background: rgba(0, 137, 123, 0.08);
+            color: var(--dv360-teal);
+        }
+
+        .tab-btn.active {
+            background: var(--dv360-teal);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: var(--dv360-card);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--dv360-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h2 {
+            font-family: 'Google Sans', sans-serif;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--dv360-text);
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Summary Cards Grid */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .summary-card {
+            background: var(--dv360-card);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--dv360-teal);
+        }
+
+        .summary-card .label {
+            font-size: 13px;
+            color: var(--dv360-text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-card .value {
+            font-size: 28px;
+            font-weight: 500;
+            color: var(--dv360-text);
+            font-family: 'Google Sans', sans-serif;
+        }
+
+        .summary-card .subtext {
+            font-size: 12px;
+            color: var(--dv360-text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Data Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 500;
+            color: var(--dv360-text-secondary);
+            border-bottom: 2px solid var(--dv360-border);
+            white-space: nowrap;
+        }
+
+        .data-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--dv360-border);
+            vertical-align: middle;
+        }
+
+        .data-table tr:hover {
+            background: rgba(0, 137, 123, 0.04);
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .numeric {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .positive {
+            color: var(--dv360-success);
+        }
+
+        .negative {
+            color: var(--dv360-error);
+        }
+
+        /* Conversion Pills */
+        .conversion-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .conversion-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .view-conversion {
+            background: rgba(66, 133, 244, 0.1);
+            color: #4285f4;
+        }
+
+        .click-conversion {
+            background: rgba(52, 168, 83, 0.1);
+            color: #34a853;
+        }
+
+        /* Funnel Visualization */
+        .funnel-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            padding: 40px 20px;
+            flex-wrap: wrap;
+        }
+
+        .funnel-step {
+            background: linear-gradient(135deg, var(--dv360-teal) 0%, var(--dv360-teal-dark) 100%);
+            color: white;
+            padding: 24px 32px;
+            border-radius: 12px;
+            text-align: center;
+            min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0, 137, 123, 0.3);
+            position: relative;
+        }
+
+        .funnel-step .step-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
+        .funnel-step .step-value {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'Google Sans', sans-serif;
+        }
+
+        .funnel-step .step-percent {
+            font-size: 13px;
+            margin-top: 8px;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .funnel-arrow {
+            font-size: 28px;
+            color: var(--dv360-teal);
+            opacity: 0.6;
+        }
+
+        /* Creative Cards */
+        .creative-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .creative-card {
+            background: var(--dv360-card);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid var(--dv360-border);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .creative-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+        .creative-name {
+            font-weight: 500;
+            font-size: 15px;
+            margin-bottom: 16px;
+            color: var(--dv360-text);
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--dv360-border);
+        }
+
+        .creative-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .creative-metric {
+            text-align: center;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .creative-metric .metric-label {
+            font-size: 11px;
+            color: var(--dv360-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .creative-metric .metric-value {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--dv360-text);
+            margin-top: 4px;
+        }
+
+        .conversion-breakdown {
+            grid-column: span 2;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 32px;
+            color: var(--dv360-text-secondary);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--dv360-teal);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Badge styles */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-teal {
+            background: rgba(0, 137, 123, 0.1);
+            color: var(--dv360-teal);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                padding: 24px;
+            }
+            .container {
+                padding: 16px;
+            }
+            .tab-navigation {
+                flex-direction: column;
+            }
+            .funnel-container {
+                flex-direction: column;
+            }
+            .funnel-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-top">
+            <span class="logo-icon" aria-hidden="true"></span>
+            <h1>DV360 Performance Report</h1>
+        </div>
+        <div class="header-meta">
+            <span>Nov 1 - Dec 9, 2025</span>
+            <span>Sample Advertiser</span>
+            <span>CHF Currency</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Summary Cards -->
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="label">Total Impressions</div>
+                <div class="value">25.0M</div>
+                <div class="subtext">Across all campaigns</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Total Clicks</div>
+                <div class="value">12,509</div>
+                <div class="subtext">0.050% CTR</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">View Conversions</div>
+                <div class="value">855</div>
+                <div class="subtext">84.7% of total conversions</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Click Conversions</div>
+                <div class="value">155</div>
+                <div class="subtext">15.3% of total conversions</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Total Conversions</div>
+                <div class="value">1,010</div>
+                <div class="subtext">CHF 12.32 per conversion</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Media Spend</div>
+                <div class="value">CHF 12,440</div>
+                <div class="subtext">Nov 1 - Dec 9, 2025</div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation (Centered) -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="showTab('campaigns')">Campaigns</button>
+            <button class="tab-btn" onclick="showTab('insertion-orders')">Insertion Orders</button>
+            <button class="tab-btn" onclick="showTab('age-breakdown')">Age Breakdown</button>
+            <button class="tab-btn" onclick="showTab('conversion-funnel')">Conversion Funnel</button>
+            <button class="tab-btn" onclick="showTab('creative-analysis')">Creative Analysis</button>
+        </div>
+
+        <!-- Tab 1: Campaigns -->
+        <div id="campaigns" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Campaign Performance</h2>
+                    <span class="badge badge-teal">6 Campaigns</span>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Campaign</th>
+                                <th class="numeric">Impressions</th>
+                                <th class="numeric">Clicks</th>
+                                <th class="numeric">CTR</th>
+                                <th class="numeric">Conversions</th>
+                                <th>View vs Click</th>
+                                <th class="numeric">Spend (CHF)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Holiday Calendar (DE)</td>
+                                <td class="numeric">7,332,469</td>
+                                <td class="numeric">3,337</td>
+                                <td class="numeric">0.046%</td>
+                                <td class="numeric">378</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">372 View</span>
+                                        <span class="conversion-pill click-conversion">6 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">3,867.80</td>
+                            </tr>
+                            <tr>
+                                <td>Holiday Calendar (FR)</td>
+                                <td class="numeric">3,363,186</td>
+                                <td class="numeric">1,477</td>
+                                <td class="numeric">0.044%</td>
+                                <td class="numeric">216</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">211 View</span>
+                                        <span class="conversion-pill click-conversion">5 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">2,085.11</td>
+                            </tr>
+                            <tr>
+                                <td>Gift Ideas (DE)</td>
+                                <td class="numeric">6,763,976</td>
+                                <td class="numeric">940</td>
+                                <td class="numeric">0.014%</td>
+                                <td class="numeric">49</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">45 View</span>
+                                        <span class="conversion-pill click-conversion">4 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">2,646.48</td>
+                            </tr>
+                            <tr>
+                                <td>Gift Ideas (FR)</td>
+                                <td class="numeric">3,594,606</td>
+                                <td class="numeric">471</td>
+                                <td class="numeric">0.013%</td>
+                                <td class="numeric">17</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">17 View</span>
+                                        <span class="conversion-pill click-conversion">0 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">1,425.23</td>
+                            </tr>
+                            <tr>
+                                <td>Instant Photos (DE)</td>
+                                <td class="numeric">2,563,153</td>
+                                <td class="numeric">4,183</td>
+                                <td class="numeric positive">0.163%</td>
+                                <td class="numeric">206</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">104 View</span>
+                                        <span class="conversion-pill click-conversion">102 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">1,569.50</td>
+                            </tr>
+                            <tr>
+                                <td>Instant Photos (FR)</td>
+                                <td class="numeric">1,395,270</td>
+                                <td class="numeric">2,101</td>
+                                <td class="numeric positive">0.151%</td>
+                                <td class="numeric">144</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">106 View</span>
+                                        <span class="conversion-pill click-conversion">38 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">845.89</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Insertion Orders -->
+        <div id="insertion-orders" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Insertion Order Performance</h2>
+                    <span class="badge badge-teal">6 Insertion Orders</span>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Insertion Order</th>
+                                <th class="numeric">Impressions</th>
+                                <th class="numeric">Clicks</th>
+                                <th class="numeric">CTR</th>
+                                <th class="numeric">Conversions</th>
+                                <th>View vs Click</th>
+                                <th class="numeric">Spend (CHF)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Holiday Calendar - DE - Awareness</td>
+                                <td class="numeric">7,332,469</td>
+                                <td class="numeric">3,337</td>
+                                <td class="numeric">0.046%</td>
+                                <td class="numeric">378</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">372 View</span>
+                                        <span class="conversion-pill click-conversion">6 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">3,867.80</td>
+                            </tr>
+                            <tr>
+                                <td>Holiday Calendar - FR - Awareness</td>
+                                <td class="numeric">3,363,186</td>
+                                <td class="numeric">1,477</td>
+                                <td class="numeric">0.044%</td>
+                                <td class="numeric">216</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">211 View</span>
+                                        <span class="conversion-pill click-conversion">5 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">2,085.11</td>
+                            </tr>
+                            <tr>
+                                <td>Gift Ideas - DE - Awareness</td>
+                                <td class="numeric">6,763,976</td>
+                                <td class="numeric">940</td>
+                                <td class="numeric">0.014%</td>
+                                <td class="numeric">49</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">45 View</span>
+                                        <span class="conversion-pill click-conversion">4 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">2,646.48</td>
+                            </tr>
+                            <tr>
+                                <td>Gift Ideas - FR - Awareness</td>
+                                <td class="numeric">3,594,606</td>
+                                <td class="numeric">471</td>
+                                <td class="numeric">0.013%</td>
+                                <td class="numeric">17</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">17 View</span>
+                                        <span class="conversion-pill click-conversion">0 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">1,425.23</td>
+                            </tr>
+                            <tr>
+                                <td>Instant Photos - DE - Awareness</td>
+                                <td class="numeric">2,563,153</td>
+                                <td class="numeric">4,183</td>
+                                <td class="numeric positive">0.163%</td>
+                                <td class="numeric">206</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">104 View</span>
+                                        <span class="conversion-pill click-conversion">102 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">1,569.50</td>
+                            </tr>
+                            <tr>
+                                <td>Instant Photos - FR - Awareness</td>
+                                <td class="numeric">1,395,270</td>
+                                <td class="numeric">2,101</td>
+                                <td class="numeric positive">0.151%</td>
+                                <td class="numeric">144</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">106 View</span>
+                                        <span class="conversion-pill click-conversion">38 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">845.89</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Age Breakdown -->
+        <div id="age-breakdown" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Performance by Age Group</h2>
+                    <span class="badge badge-teal">Derived from Line Item Names</span>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Age Group</th>
+                                <th class="numeric">Impressions</th>
+                                <th class="numeric">Clicks</th>
+                                <th class="numeric">CTR</th>
+                                <th class="numeric">Conversions</th>
+                                <th>View vs Click</th>
+                                <th class="numeric">Spend (CHF)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>25-34</strong></td>
+                                <td class="numeric">9,634,138</td>
+                                <td class="numeric">2,931</td>
+                                <td class="numeric">0.030%</td>
+                                <td class="numeric">436</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">406 View</span>
+                                        <span class="conversion-pill click-conversion">30 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">4,861.45</td>
+                            </tr>
+                            <tr>
+                                <td><strong>35-44</strong></td>
+                                <td class="numeric">8,107,907</td>
+                                <td class="numeric">5,485</td>
+                                <td class="numeric positive">0.068%</td>
+                                <td class="numeric">349</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">244 View</span>
+                                        <span class="conversion-pill click-conversion">105 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">4,193.55</td>
+                            </tr>
+                            <tr>
+                                <td><strong>45-54</strong></td>
+                                <td class="numeric">4,022,798</td>
+                                <td class="numeric">1,591</td>
+                                <td class="numeric">0.040%</td>
+                                <td class="numeric">159</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">136 View</span>
+                                        <span class="conversion-pill click-conversion">23 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">1,959.88</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Age Insights -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Age Group Insights</h2>
+                </div>
+                <div class="card-body">
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <div class="label">Highest Volume</div>
+                            <div class="value">25-34</div>
+                            <div class="subtext">9.6M impressions, 436 conversions</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="label">Best CTR</div>
+                            <div class="value">35-44</div>
+                            <div class="subtext">0.068% click-through rate</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="label">Highest Click Conv.</div>
+                            <div class="value">35-44</div>
+                            <div class="subtext">105 post-click conversions</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="label">Best Efficiency</div>
+                            <div class="value">25-34</div>
+                            <div class="subtext">CHF 11.15 per conversion</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Conversion Funnel -->
+        <div id="conversion-funnel" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Conversion Funnel Analysis</h2>
+                    <span class="badge badge-teal">Floodlight Activities</span>
+                </div>
+                <div class="card-body">
+                    <div class="funnel-container">
+                        <div class="funnel-step">
+                            <div class="step-name">Find Branch</div>
+                            <div class="step-value">1,847</div>
+                            <div class="step-percent">Entry Point</div>
+                        </div>
+                        <div class="funnel-arrow">→</div>
+                        <div class="funnel-step">
+                            <div class="step-name">Product View</div>
+                            <div class="step-value">992</div>
+                            <div class="step-percent">53.7% from Find Branch</div>
+                        </div>
+                        <div class="funnel-arrow">→</div>
+                        <div class="funnel-step">
+                            <div class="step-name">Add to Cart</div>
+                            <div class="step-value">531</div>
+                            <div class="step-percent">53.5% from Product View</div>
+                        </div>
+                        <div class="funnel-arrow">→</div>
+                        <div class="funnel-step">
+                            <div class="step-name">Purchase</div>
+                            <div class="step-value">298</div>
+                            <div class="step-percent">56.1% from Add to Cart</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Funnel Metrics Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Funnel Step Details</h2>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Funnel Step</th>
+                                <th class="numeric">Total Conversions</th>
+                                <th>View vs Click</th>
+                                <th class="numeric">% of Previous Step</th>
+                                <th class="numeric">% of Entry</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Find Branch</strong></td>
+                                <td class="numeric">1,847</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">1,623 View</span>
+                                        <span class="conversion-pill click-conversion">224 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">—</td>
+                                <td class="numeric">100.0%</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Product View</strong></td>
+                                <td class="numeric">992</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">847 View</span>
+                                        <span class="conversion-pill click-conversion">145 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">53.7%</td>
+                                <td class="numeric">53.7%</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Add to Cart</strong></td>
+                                <td class="numeric">531</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">412 View</span>
+                                        <span class="conversion-pill click-conversion">119 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">53.5%</td>
+                                <td class="numeric">28.7%</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Purchase</strong></td>
+                                <td class="numeric">298</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">219 View</span>
+                                        <span class="conversion-pill click-conversion">79 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">56.1%</td>
+                                <td class="numeric">16.1%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 5: Creative Analysis -->
+        <div id="creative-analysis" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Creative Performance by Size</h2>
+                    <span class="badge badge-teal">Standard Display Banners</span>
+                </div>
+                <div class="card-body">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Banner Size</th>
+                                <th class="numeric">Impressions</th>
+                                <th class="numeric">Clicks</th>
+                                <th class="numeric">CTR</th>
+                                <th class="numeric">Conversions</th>
+                                <th>View vs Click</th>
+                                <th class="numeric">Spend (CHF)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>728x90</strong> (Leaderboard)</td>
+                                <td class="numeric">10,729,353</td>
+                                <td class="numeric">3,436</td>
+                                <td class="numeric">0.032%</td>
+                                <td class="numeric">433</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">416 View</span>
+                                        <span class="conversion-pill click-conversion">17 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">5,128.86</td>
+                            </tr>
+                            <tr>
+                                <td><strong>300x250</strong> (Medium Rectangle)</td>
+                                <td class="numeric">8,848,614</td>
+                                <td class="numeric">2,432</td>
+                                <td class="numeric">0.027%</td>
+                                <td class="numeric">205</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">175 View</span>
+                                        <span class="conversion-pill click-conversion">30 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">4,071.46</td>
+                            </tr>
+                            <tr>
+                                <td><strong>300x600</strong> (Half Page)</td>
+                                <td class="numeric">1,075,645</td>
+                                <td class="numeric">3,774</td>
+                                <td class="numeric positive">0.351%</td>
+                                <td class="numeric">128</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">36 View</span>
+                                        <span class="conversion-pill click-conversion">92 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">860.56</td>
+                            </tr>
+                            <tr>
+                                <td><strong>160x600</strong> (Wide Skyscraper)</td>
+                                <td class="numeric">1,356,697</td>
+                                <td class="numeric">502</td>
+                                <td class="numeric">0.037%</td>
+                                <td class="numeric">79</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">71 View</span>
+                                        <span class="conversion-pill click-conversion">8 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">709.42</td>
+                            </tr>
+                            <tr>
+                                <td><strong>970x250</strong> (Billboard)</td>
+                                <td class="numeric">957,843</td>
+                                <td class="numeric">318</td>
+                                <td class="numeric">0.033%</td>
+                                <td class="numeric">61</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">57 View</span>
+                                        <span class="conversion-pill click-conversion">4 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">536.03</td>
+                            </tr>
+                            <tr>
+                                <td><strong>336x280</strong> (Large Rectangle)</td>
+                                <td class="numeric">508,481</td>
+                                <td class="numeric">1,552</td>
+                                <td class="numeric positive">0.305%</td>
+                                <td class="numeric">24</td>
+                                <td>
+                                    <div class="conversion-cell">
+                                        <span class="conversion-pill view-conversion">16 View</span>
+                                        <span class="conversion-pill click-conversion">8 Click</span>
+                                    </div>
+                                </td>
+                                <td class="numeric">326.92</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Top Performing Creatives -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Top Performing Creatives</h2>
+                </div>
+                <div class="card-body">
+                    <div class="creative-grid">
+                        <div class="creative-card">
+                            <div class="creative-name">Holiday Calendar 300x600 (DE)</div>
+                            <div class="creative-metrics">
+                                <div class="creative-metric">
+                                    <div class="metric-label">CTR</div>
+                                    <div class="metric-value positive">1.39%</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Clicks</div>
+                                    <div class="metric-value">2,371</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Conversions</div>
+                                    <div class="metric-value">80</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Cost/Conv</div>
+                                    <div class="metric-value">CHF 3.76</div>
+                                </div>
+                                <div class="conversion-breakdown">
+                                    <span class="conversion-pill view-conversion">16 View</span>
+                                    <span class="conversion-pill click-conversion">64 Click</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="creative-card">
+                            <div class="creative-name">Holiday Calendar 300x600 (FR)</div>
+                            <div class="creative-metrics">
+                                <div class="creative-metric">
+                                    <div class="metric-label">CTR</div>
+                                    <div class="metric-value positive">1.36%</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Clicks</div>
+                                    <div class="metric-value">1,006</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Conversions</div>
+                                    <div class="metric-value">34</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Cost/Conv</div>
+                                    <div class="metric-value">CHF 3.88</div>
+                                </div>
+                                <div class="conversion-breakdown">
+                                    <span class="conversion-pill view-conversion">10 View</span>
+                                    <span class="conversion-pill click-conversion">24 Click</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="creative-card">
+                            <div class="creative-name">Instant Photos 336x280 (FR)</div>
+                            <div class="creative-metrics">
+                                <div class="creative-metric">
+                                    <div class="metric-label">CTR</div>
+                                    <div class="metric-value positive">0.83%</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Clicks</div>
+                                    <div class="metric-value">690</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Conversions</div>
+                                    <div class="metric-value">20</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Cost/Conv</div>
+                                    <div class="metric-value">CHF 5.23</div>
+                                </div>
+                                <div class="conversion-breakdown">
+                                    <span class="conversion-pill view-conversion">0 View</span>
+                                    <span class="conversion-pill click-conversion">20 Click</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="creative-card">
+                            <div class="creative-name">Instant Photos 336x280 (DE)</div>
+                            <div class="creative-metrics">
+                                <div class="creative-metric">
+                                    <div class="metric-label">CTR</div>
+                                    <div class="metric-value positive">0.65%</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Clicks</div>
+                                    <div class="metric-value">234</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Conversions</div>
+                                    <div class="metric-value">4</div>
+                                </div>
+                                <div class="creative-metric">
+                                    <div class="metric-label">Cost/Conv</div>
+                                    <div class="metric-value">CHF 13.56</div>
+                                </div>
+                                <div class="conversion-breakdown">
+                                    <span class="conversion-pill view-conversion">1 View</span>
+                                    <span class="conversion-pill click-conversion">3 Click</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Generated by <a href="https://github.com/caspercrause/dv360-ads-mcp-server" target="_blank">DV360 MCP Server</a></p>
+        <p style="margin-top: 8px;">Report demonstrates capabilities of the MCP server for Display & Video 360 reporting.</p>
+    </footer>
+
+    <script>
+        function showTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

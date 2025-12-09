@@ -2,6 +2,16 @@
 
 A Model Context Protocol (MCP) server for Display & Video 360 (DV360) that provides entity management and performance reporting capabilities.
 
+## Sample Report Demo
+
+**[View Sample Performance Report](https://caspercrause.github.io/dv360-ads-mcp-server/templates/dv360_performance_report.html)** - See what's possible with this MCP server.
+
+The sample report demonstrates:
+- Campaign and Insertion Order performance analysis
+- Age group segmentation from Line Item targeting
+- Floodlight conversion funnel (Find Branch → Product View → Add to Cart → Purchase)
+- Creative banner size performance comparison
+
 ## Architecture
 
 This server integrates with two Google APIs to provide comprehensive DV360 access:
@@ -435,189 +445,22 @@ For the complete list, see: https://developers.google.com/bid-manager/reference/
 
 ## Using Tools Together for Performance Analysis
 
-The entity management tools work seamlessly with the reporting tools to enable comprehensive performance analysis:
+How it comes together (no code needed):
+- Discover entities: campaigns, insertion orders, line items, creatives.
+- Pull performance: impressions, clicks, conversions, cost, and revenue-ready metrics with currency included.
+- Break down results: by funnel step (Floodlight), age (from line items), creative size, geography, or device.
+- Ship it: generate the HTML report and host it (e.g., GitHub Pages) to share with stakeholders.
 
-### Example Workflow: Campaign Performance Analysis
+What you can explore
+- Campaign/IO performance with view vs click conversions.
+- Funnel health: Find Branch → Product View → Add to Cart → Purchase.
+- Which creatives and sizes are most efficient.
+- Which age groups (from line items) respond best.
+- Geographic or device splits to refine targeting.
 
-1. **List active campaigns**
-```python
-campaigns = list_campaigns(
-    advertiser_id="123456",
-    filter='entityStatus="ENTITY_STATUS_ACTIVE"'
-)
-```
-
-2. **Get detailed campaign information**
-```python
-campaign = get_campaign(
-    advertiser_id="123456",
-    campaign_id=campaigns['campaigns'][0]['campaign_id']
-)
-```
-
-3. **Run performance report for specific campaigns**
-```python
-report = run_report(
-    start_date="2025-01-01",
-    end_date="2025-01-31",
-    dimensions=["FILTER_DATE", "FILTER_MEDIA_PLAN_NAME", "FILTER_INSERTION_ORDER_NAME"],
-    metrics=["METRIC_IMPRESSIONS", "METRIC_CLICKS", "METRIC_CTR", "METRIC_TOTAL_CONVERSIONS"],
-    campaign_ids=campaigns['campaigns'][0]['campaign_id']
-)
-```
-
-### Example Workflow: Creative Performance by Campaign
-
-1. **List all creatives for an advertiser**
-```python
-creatives = list_creatives(
-    advertiser_id="123456",
-    filter='entityStatus="ENTITY_STATUS_ACTIVE"'
-)
-```
-
-2. **Run creative performance report**
-```python
-report = run_report(
-    start_date="2025-01-01",
-    end_date="2025-01-31",
-    dimensions=["FILTER_CREATIVE", "FILTER_CREATIVE_TYPE", "FILTER_MEDIA_PLAN_NAME"],
-    metrics=["METRIC_IMPRESSIONS", "METRIC_CLICKS", "METRIC_VIDEO_COMPLETION_RATE"],
-    advertiser_ids="123456"
-)
-```
-
-### Example Workflow: Insertion Order Budget Analysis
-
-1. **List insertion orders with budget data**
-```python
-ios = list_insertion_orders(
-    advertiser_id="123456",
-    filter='entityStatus="ENTITY_STATUS_ACTIVE"',
-    order_by="displayName"
-)
-
-# Each IO includes budget information:
-for io in ios['insertion_orders']:
-    print(f"{io['insertion_order_name']}: {io['budget']}")
-```
-
-2. **Get detailed insertion order info**
-```python
-io_detail = get_insertion_order(
-    advertiser_id="123456",
-    insertion_order_id=ios['insertion_orders'][0]['insertion_order_id']
-)
-```
-
-3. **Run performance report for specific insertion orders**
-```python
-report = run_report(
-    start_date="2025-01-01",
-    end_date="2025-01-31",
-    dimensions=["FILTER_DATE", "FILTER_INSERTION_ORDER_NAME"],
-    metrics=["METRIC_IMPRESSIONS", "METRIC_MEDIA_COST_ADVERTISER", "METRIC_TOTAL_CONVERSIONS"],
-    insertion_order_ids=[io['insertion_order_id'] for io in ios['insertion_orders'][:5]]
-)
-```
-
-## Example Queries
-
-### 🔦 Floodlight Conversion Tracking by Activity
-
-Track specific conversion actions in your customer journey:
-
-```python
-run_report(
-    start_date="2025-11-01",
-    end_date="2025-11-30",
-    dimensions=["FILTER_DATE", "FILTER_FLOODLIGHT_ACTIVITY_ID", "FILTER_FLOODLIGHT_ACTIVITY"],
-    metrics=["METRIC_TOTAL_CONVERSIONS", "METRIC_LAST_CLICKS", "METRIC_LAST_IMPRESSIONS"],
-    advertiser_ids="123456789"
-)
-```
-
-**Example Output:**
-```json
-{
-  "Date": "2025-11-06",
-  "Floodlight Activity ID": 185677093,
-  "Floodlight Activity Name": "product_view",
-  "Total Conversions": 43,
-  "Post-Click Conversions": 8,
-  "Post-View Conversions": 35
-}
-```
-
-This shows the complete conversion funnel:
-- **product_view**: 43 conversions
-- **add_to_cart**: 3 conversions
-- **purchase**: 3 conversions
-
-### 🔦 Floodlight Revenue/Conversion Value Tracking
-
-Track which conversion actions generate revenue:
-
-```python
-run_report(
-    start_date="2025-11-01",
-    end_date="2025-11-30",
-    dimensions=["FILTER_DATE", "FILTER_FLOODLIGHT_ACTIVITY_ID", "FILTER_FLOODLIGHT_ACTIVITY", "FILTER_ADVERTISER_CURRENCY"],
-    metrics=["METRIC_TOTAL_CONVERSIONS", "METRIC_REVENUE_ADVERTISER"],
-    advertiser_ids="123456789"
-)
-```
-
-**Note**: The `FILTER_ADVERTISER_CURRENCY` dimension is required when using `METRIC_REVENUE_ADVERTISER`.
-
-### Floodlight Performance by Campaign
-
-See which campaigns drive specific conversion actions:
-
-```python
-run_report(
-    start_date="2025-11-01",
-    end_date="2025-11-30",
-    dimensions=["FILTER_MEDIA_PLAN_NAME", "FILTER_FLOODLIGHT_ACTIVITY"],
-    metrics=["METRIC_TOTAL_CONVERSIONS", "METRIC_LAST_CLICKS", "METRIC_LAST_IMPRESSIONS"],
-    advertiser_ids="123456789"
-)
-```
-
-**Note**: Cannot include cost or impression metrics when using Floodlight dimensions.
-
-### Daily Campaign Performance
-```python
-run_report(
-    start_date="2025-01-01",
-    end_date="2025-01-31",
-    dimensions=["FILTER_DATE", "FILTER_MEDIA_PLAN_NAME"],
-    metrics=["METRIC_IMPRESSIONS", "METRIC_CLICKS", "METRIC_CTR", "METRIC_TOTAL_CONVERSIONS", "METRIC_MEDIA_COST_ADVERTISER"],
-    advertiser_ids="123456789"
-)
-```
-
-### Creative Performance by Device
-```python
-run_report(
-    start_date="2025-01-01",
-    end_date="2025-01-31",
-    dimensions=["FILTER_CREATIVE_TYPE", "FILTER_DEVICE_TYPE"],
-    metrics=["METRIC_IMPRESSIONS", "METRIC_CLICKS", "METRIC_VIEWABLE_IMPRESSIONS"],
-    advertiser_ids="123456789"
-)
-```
-
-### Geographic Performance
-```python
-run_report(
-    start_date="2025-01-01",
-    end_date="2025-01-31",
-    dimensions=["FILTER_COUNTRY", "FILTER_REGION"],
-    metrics=["METRIC_IMPRESSIONS", "METRIC_CLICKS", "METRIC_TOTAL_CONVERSIONS", "METRIC_REVENUE_ADVERTISER"],
-    advertiser_ids="123456789"
-)
-```
+Want hands-on examples?
+- Run the sample report locally: `python3 -m http.server 8000` and open `http://localhost:8000/dv360_performance_report.html`.
+- Or view the live sample: https://caspercrause.github.io/dv360-ads-mcp-server/templates/dv360_performance_report.html
 
 ## Response Format
 
@@ -673,21 +516,3 @@ The server returns a JSON response with the following structure:
 - [DV360 Bid Manager API Documentation](https://developers.google.com/bid-manager)
 - [Filters and Metrics Reference](https://developers.google.com/bid-manager/reference/rest/v2/filters-metrics)
 - [FastMCP Documentation](https://github.com/anthropics/fastmcp)
-
-## Comparison with Original Implementation
-
-### Original (ReportCreatorDV360.py)
-- ❌ Asynchronous with polling loop
-- ❌ Manual CSV download and formatting
-- ❌ Files left on disk requiring cleanup
-- ❌ Complex retry logic needed
-
-### New MCP Server
-- ✅ Synchronous execution (waits automatically)
-- ✅ Automatic CSV parsing to JSON
-- ✅ No files on disk
-- ✅ Simple, clean interface
-
-## License
-
-MIT

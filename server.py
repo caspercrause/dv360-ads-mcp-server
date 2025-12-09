@@ -750,6 +750,192 @@ def dv_get_insertion_order(
 
 
 @mcp.tool()
+def dv_list_line_items(
+    advertiser_id: str = Field(..., description="Advertiser ID under which to list line items"),
+    page_size: int = Field(default=100, description="Number of line items to return per page (max 100)"),
+    filter: Optional[str] = Field(default=None, description="Filter expression to filter line items (e.g., 'entityStatus=\"ENTITY_STATUS_ACTIVE\"')"),
+    order_by: Optional[str] = Field(default=None, description="Field to order by (e.g., 'displayName', 'lineItemId')")
+) -> Dict[str, Any]:
+    """
+    List all line items for an advertiser with optional filtering and ordering.
+
+    Line items contain the targeting settings (age, gender, audiences, etc.) and 
+    are where age-based naming conventions are typically found.
+
+    Use this to retrieve line item details for performance reporting and targeting analysis.
+    Supports filtering by entity status, line item type, and other properties.
+
+    **Filter Examples:**
+    - entityStatus="ENTITY_STATUS_ACTIVE"
+    - entityStatus="ENTITY_STATUS_PAUSED"
+    - lineItemType="LINE_ITEM_TYPE_DISPLAY_DEFAULT"
+    - updateTime>"2025-01-01T00:00:00Z"
+
+    **Order By Examples:**
+    - displayName
+    - lineItemId
+    - updateTime desc
+
+    Args:
+        advertiser_id: The advertiser ID under which to list line items (required)
+        page_size: Number of line items per page (default: 100, max: 100)
+        filter: Optional filter expression to narrow results
+        order_by: Optional field name to order results by
+
+    Returns:
+        Dictionary containing:
+        - line_items: List of line item objects with id, displayName, targeting, budget, etc.
+        - count: Number of line items returned
+        - advertiser_id: The advertiser ID queried
+
+    Example:
+        list_line_items(advertiser_id="123456", filter='entityStatus="ENTITY_STATUS_ACTIVE"')
+    """
+    try:
+        service = get_dv360_service()
+
+        logger.info(f"Listing line items for advertiser {advertiser_id}...")
+
+        # Build request parameters
+        params = {
+            'advertiserId': advertiser_id,
+            'pageSize': min(page_size, 100)  # API max is 100
+        }
+
+        if filter:
+            params['filter'] = filter
+
+        if order_by:
+            params['orderBy'] = order_by
+
+        # Make API call
+        result = service.advertisers().lineItems().list(**params).execute()
+
+        line_items = result.get('lineItems', [])
+
+        logger.info(f"Found {len(line_items)} line items")
+
+        # Format response
+        formatted_line_items = []
+        for li in line_items:
+            formatted_line_items.append({
+                'line_item_id': li.get('lineItemId'),
+                'line_item_name': li.get('displayName'),
+                'advertiser_id': li.get('advertiserId'),
+                'campaign_id': li.get('campaignId'),
+                'insertion_order_id': li.get('insertionOrderId'),
+                'entity_status': li.get('entityStatus'),
+                'line_item_type': li.get('lineItemType'),
+                'update_time': li.get('updateTime'),
+                'flight': li.get('flight', {}),
+                'budget': li.get('budget', {}),
+                'pacing': li.get('pacing', {}),
+                'frequency_cap': li.get('frequencyCap', {}),
+                'bid_strategy': li.get('bidStrategy', {})
+            })
+
+        return {
+            "success": True,
+            "line_items": formatted_line_items,
+            "count": len(formatted_line_items),
+            "advertiser_id": advertiser_id,
+            "next_page_token": result.get('nextPageToken')
+        }
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Error listing line items: {error_msg}", exc_info=True)
+
+        if 'permission' in error_msg.lower() or '403' in error_msg:
+            return {
+                "success": False,
+                "error": error_msg,
+                "message": "Permission denied. Ensure your service account has access to this advertiser."
+            }
+        elif 'not found' in error_msg.lower() or '404' in error_msg:
+            return {
+                "success": False,
+                "error": error_msg,
+                "message": f"Advertiser ID {advertiser_id} not found."
+            }
+        else:
+            return {
+                "success": False,
+                "error": error_msg
+            }
+
+
+@mcp.tool()
+def dv_get_line_item(
+    advertiser_id: str = Field(..., description="Advertiser ID"),
+    line_item_id: str = Field(..., description="Line Item ID to retrieve")
+) -> Dict[str, Any]:
+    """
+    Get detailed information about a specific line item including targeting settings.
+
+    Use this to retrieve full line item details including targeting (age, gender, 
+    audiences), budget, pacing, bid strategy, and other settings.
+
+    Args:
+        advertiser_id: The advertiser ID that owns the line item
+        line_item_id: The line item ID to retrieve
+
+    Returns:
+        Dictionary containing complete line item details including:
+        - line_item_id, line_item_name
+        - campaign_id, insertion_order_id
+        - entity_status, line_item_type
+        - flight dates
+        - budget and pacing settings
+        - bid_strategy
+        - targeting_expansion
+        - And all other line item properties
+
+    Example:
+        get_line_item(advertiser_id="123456", line_item_id="789012")
+    """
+    try:
+        service = get_dv360_service()
+
+        logger.info(f"Fetching line item {line_item_id} for advertiser {advertiser_id}...")
+
+        # Make API call
+        line_item = service.advertisers().lineItems().get(
+            advertiserId=advertiser_id,
+            lineItemId=line_item_id
+        ).execute()
+
+        logger.info(f"Successfully retrieved line item: {line_item.get('displayName')}")
+
+        return {
+            "success": True,
+            "line_item": line_item
+        }
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Error getting line item: {error_msg}", exc_info=True)
+
+        if 'permission' in error_msg.lower() or '403' in error_msg:
+            return {
+                "success": False,
+                "error": error_msg,
+                "message": "Permission denied. Ensure your service account has access to this line item."
+            }
+        elif 'not found' in error_msg.lower() or '404' in error_msg:
+            return {
+                "success": False,
+                "error": error_msg,
+                "message": f"Line item {line_item_id} not found for advertiser {advertiser_id}."
+            }
+        else:
+            return {
+                "success": False,
+                "error": error_msg
+            }
+
+
+@mcp.tool()
 def dv_list_creatives(
     advertiser_id: str = Field(..., description="Advertiser ID under which to list creatives"),
     page_size: int = Field(default=100, description="Number of creatives to return per page (max 100)"),
