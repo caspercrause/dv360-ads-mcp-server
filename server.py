@@ -215,6 +215,49 @@ def format_date_for_api(date_str: str) -> Dict[str, str]:
     }
 
 
+def coerce_to_string_list(value: Optional[Union[List[str], str]]) -> List[str]:
+    """
+    Coerce a parameter into a clean list of strings.
+
+    Accepts a real list, a comma-separated string, or a JSON-encoded array
+    string. Some MCP clients serialize list arguments as a JSON string
+    (e.g. '["FILTER_DATE", "FILTER_ADVERTISER_NAME"]'), and naively
+    comma-splitting that produces invalid tokens like '["FILTER_DATE',
+    so JSON arrays are parsed first and comma-splitting is the fallback.
+
+    Args:
+        value: List, comma-separated string, JSON array string, or None
+
+    Returns:
+        List of cleaned string values (empty list if value is None)
+    """
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        text = value.strip()
+        # Unwrap one level of double-encoded JSON (e.g. '"[\"FILTER_DATE\"]"')
+        if text.startswith('"'):
+            try:
+                unwrapped = json.loads(text)
+                if isinstance(unwrapped, str):
+                    text = unwrapped.strip()
+            except (json.JSONDecodeError, RecursionError):
+                pass
+        if text.startswith('['):
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, list):
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+            except (json.JSONDecodeError, RecursionError):
+                pass
+        # Fallback: comma-split and strip any stray brackets/quotes
+        tokens = [token.strip().strip('[]"\'') for token in text.split(',')]
+        return [token for token in tokens if token]
+
+    return [str(item).strip() for item in value]
+
+
 def prepare_filters(
     advertiser_ids: Optional[Union[List[str], str]] = None,
     campaign_ids: Optional[Union[List[str], str]] = None,
@@ -236,32 +279,20 @@ def prepare_filters(
     filters = []
 
     # Handle advertiser IDs
-    if advertiser_ids:
-        if isinstance(advertiser_ids, str):
-            advertiser_ids = [id.strip() for id in advertiser_ids.split(',')]
-        for adv_id in advertiser_ids:
-            filters.append({"type": "FILTER_ADVERTISER", "value": adv_id})
+    for adv_id in coerce_to_string_list(advertiser_ids):
+        filters.append({"type": "FILTER_ADVERTISER", "value": adv_id})
 
     # Handle campaign IDs
-    if campaign_ids:
-        if isinstance(campaign_ids, str):
-            campaign_ids = [id.strip() for id in campaign_ids.split(',')]
-        for camp_id in campaign_ids:
-            filters.append({"type": "FILTER_MEDIA_PLAN", "value": camp_id})
+    for camp_id in coerce_to_string_list(campaign_ids):
+        filters.append({"type": "FILTER_MEDIA_PLAN", "value": camp_id})
 
     # Handle insertion order IDs
-    if insertion_order_ids:
-        if isinstance(insertion_order_ids, str):
-            insertion_order_ids = [id.strip() for id in insertion_order_ids.split(',')]
-        for io_id in insertion_order_ids:
-            filters.append({"type": "FILTER_INSERTION_ORDER", "value": io_id})
+    for io_id in coerce_to_string_list(insertion_order_ids):
+        filters.append({"type": "FILTER_INSERTION_ORDER", "value": io_id})
 
     # Handle line item IDs
-    if line_item_ids:
-        if isinstance(line_item_ids, str):
-            line_item_ids = [id.strip() for id in line_item_ids.split(',')]
-        for li_id in line_item_ids:
-            filters.append({"type": "FILTER_LINE_ITEM", "value": li_id})
+    for li_id in coerce_to_string_list(line_item_ids):
+        filters.append({"type": "FILTER_LINE_ITEM", "value": li_id})
 
     return filters
 
@@ -274,21 +305,13 @@ def prepare_dimensions_and_metrics(
     Prepare dimensions and metrics lists from flexible input.
 
     Args:
-        dimensions: Dimensions as list or comma-separated string
-        metrics: Metrics as list or comma-separated string
+        dimensions: Dimensions as list, comma-separated string, or JSON array string
+        metrics: Metrics as list, comma-separated string, or JSON array string
 
     Returns:
         Tuple of (dimensions_list, metrics_list)
     """
-    # Handle dimensions
-    if isinstance(dimensions, str):
-        dimensions = [d.strip() for d in dimensions.split(',')]
-
-    # Handle metrics
-    if isinstance(metrics, str):
-        metrics = [m.strip() for m in metrics.split(',')]
-
-    return dimensions, metrics
+    return coerce_to_string_list(dimensions), coerce_to_string_list(metrics)
 
 
 @mcp.tool()
