@@ -164,18 +164,41 @@ def download_csv_from_gcs(gcs_path: str) -> str:
     return content
 
 
-def parse_csv_to_json(csv_content: str) -> List[Dict[str, Any]]:
+def parse_csv_to_json(
+    csv_content: str,
+    num_dimensions: int = 0
+) -> tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
     """
-    Parse CSV content into JSON-friendly list of dictionaries.
+    Parse DV360 report CSV content into JSON-friendly data rows and totals.
+
+    DV360 CSVs contain the data rows, a grand total row with empty dimension
+    cells, a blank line, and then a footer block of metadata lines
+    ("Report Time:", "Group By:", the MRC disclaimer, ...). Only the data
+    section is returned: the footer is cut at the first blank line, and the
+    grand total row is split out separately so that summing the data rows
+    does not double every metric.
 
     Args:
         csv_content: CSV file content as string
+        num_dimensions: Number of leading dimension columns, used to detect
+            the grand total row (falls back to the first column when 0)
 
     Returns:
-        List[Dict]: Parsed data as list of dictionaries
+        Tuple of (data rows, grand total row or None)
     """
-    reader = csv.DictReader(io.StringIO(csv_content))
+    # The footer block always follows the first blank line
+    data_lines = []
+    for line in csv_content.splitlines():
+        if not line.strip():
+            break
+        data_lines.append(line)
+
+    reader = csv.DictReader(io.StringIO('\n'.join(data_lines)))
+    fieldnames = reader.fieldnames or []
+    dimension_columns = fieldnames[:num_dimensions] if num_dimensions else fieldnames[:1]
+
     data = []
+    totals = None
 
     for row in reader:
         # Convert numeric strings to appropriate types
@@ -191,10 +214,22 @@ def parse_csv_to_json(csv_content: str) -> List[Dict[str, Any]]:
                     parsed_row[key] = value
             else:
                 parsed_row[key] = value
+
+        # Grand total row: every dimension cell is empty
+        if dimension_columns and all(parsed_row.get(col) is None for col in dimension_columns):
+            totals = parsed_row
+            continue
+
+        # Guard against footer lines ("Report Time:", ...) in case Google
+        # ever drops the blank-line separator
+        first_cell = parsed_row.get(fieldnames[0]) if fieldnames else None
+        if isinstance(first_cell, str) and first_cell.endswith(':'):
+            continue
+
         data.append(parsed_row)
 
-    logger.info(f"Parsed {len(data)} rows from CSV")
-    return data
+    logger.info(f"Parsed {len(data)} data rows from CSV (totals row {'found' if totals else 'not found'})")
+    return data, totals
 
 
 def format_date_for_api(date_str: str) -> Dict[str, str]:
@@ -1340,7 +1375,7 @@ def dv_run_report(
         # Download and parse CSV
         gcs_path = report_response["metadata"]["googleCloudStoragePath"]
         csv_content = download_csv_from_gcs(gcs_path)
-        parsed_data = parse_csv_to_json(csv_content)
+        parsed_data, totals = parse_csv_to_json(csv_content, num_dimensions=len(dimensions_list))
 
         return {
             "success": True,
@@ -1355,7 +1390,8 @@ def dv_run_report(
                 "dimensions": dimensions_list,
                 "metrics": metrics_list,
                 "filters": filters,
-                "row_count": len(parsed_data)
+                "row_count": len(parsed_data),
+                "totals": totals
             }
         }
 
