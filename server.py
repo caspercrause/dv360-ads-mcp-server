@@ -158,7 +158,7 @@ def download_csv_from_gcs(gcs_path: str) -> str:
         str: CSV content as string
     """
     logger.info(f"Downloading report from: {gcs_path}")
-    with closing(urlopen(gcs_path)) as url:
+    with closing(urlopen(gcs_path, timeout=180)) as url:
         content = url.read().decode('utf-8')
     logger.info(f"Report downloaded successfully ({len(content)} bytes)")
     return content
@@ -201,11 +201,15 @@ def parse_csv_to_json(
     totals = None
 
     for row in reader:
-        # Convert numeric strings to appropriate types
+        # Convert numeric strings to appropriate types, except in dimension
+        # columns: dates, names and IDs stay strings so entity IDs can be
+        # compared against the Display & Video 360 API's string IDs
         parsed_row = {}
         for key, value in row.items():
             if value is None or value == '':
                 parsed_row[key] = None
+            elif key in dimension_columns:
+                parsed_row[key] = value
             elif value.replace('.', '', 1).replace('-', '', 1).isdigit():
                 # Try to convert to number
                 try:
@@ -291,6 +295,24 @@ def coerce_to_string_list(value: Optional[Union[List[str], str]]) -> List[str]:
         return [token for token in tokens if token]
 
     return [str(item).strip() for item in value]
+
+
+def delete_query_quietly(service, query_id: str) -> None:
+    """
+    Delete a stored Bid Manager query, logging failures without raising.
+
+    Google caps the number of stored queries per user, so every report run
+    cleans up after itself instead of accumulating queries in Report Builder.
+
+    Args:
+        service: Bid Manager API service object
+        query_id: ID of the query to delete
+    """
+    try:
+        service.queries().delete(queryId=query_id).execute()
+        logger.info(f"Deleted query {query_id}")
+    except Exception as e:
+        logger.warning(f"Could not delete query {query_id}: {e}")
 
 
 def prepare_filters(
@@ -1364,6 +1386,7 @@ def dv_run_report(
         if report_response["metadata"]["status"]["state"] == "FAILED":
             error_msg = report_response["metadata"]["status"].get("message", "Unknown error")
             logger.error(f"Report failed: {error_msg}")
+            delete_query_quietly(service, query_id)
             return {
                 "success": False,
                 "error": f"Report generation failed: {error_msg}",
@@ -1376,6 +1399,8 @@ def dv_run_report(
         gcs_path = report_response["metadata"]["googleCloudStoragePath"]
         csv_content = download_csv_from_gcs(gcs_path)
         parsed_data, totals = parse_csv_to_json(csv_content, num_dimensions=len(dimensions_list))
+
+        delete_query_quietly(service, query_id)
 
         return {
             "success": True,
