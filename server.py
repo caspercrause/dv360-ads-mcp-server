@@ -164,6 +164,18 @@ def download_csv_from_gcs(gcs_path: str) -> str:
     return content
 
 
+# First cells that mark the report footer, used as a fallback when the
+# blank-line separator before the footer is missing
+FOOTER_PREFIXES = (
+    "Report Time:",
+    "Date Range:",
+    "Group By:",
+    "Filter by ",
+    "MRC Accredited Metrics",
+    "Reporting numbers",
+)
+
+
 def parse_csv_to_json(
     csv_content: str,
     num_dimensions: int = 0
@@ -174,9 +186,11 @@ def parse_csv_to_json(
     DV360 CSVs contain the data rows, a grand total row with empty dimension
     cells, a blank line, and then a footer block of metadata lines
     ("Report Time:", "Group By:", the MRC disclaimer, ...). Only the data
-    section is returned: the footer is cut at the first blank line, and the
+    section is returned: parsing stops at the first blank row (or at the
+    first footer line if the blank separator is ever missing), and the
     grand total row is split out separately so that summing the data rows
-    does not double every metric.
+    does not double every metric. csv.reader is used on the full content so
+    newlines inside quoted cells cannot split a data row.
 
     Args:
         csv_content: CSV file content as string
@@ -186,27 +200,33 @@ def parse_csv_to_json(
     Returns:
         Tuple of (data rows, grand total row or None)
     """
-    # The footer block always follows the first blank line
-    data_lines = []
-    for line in csv_content.splitlines():
-        if not line.strip():
-            break
-        data_lines.append(line)
+    reader = csv.reader(io.StringIO(csv_content))
+    header = next(reader, None)
+    if not header:
+        logger.info("Parsed 0 data rows from empty CSV")
+        return [], None
 
-    reader = csv.DictReader(io.StringIO('\n'.join(data_lines)))
-    fieldnames = reader.fieldnames or []
-    dimension_columns = fieldnames[:num_dimensions] if num_dimensions else fieldnames[:1]
+    dimension_columns = set(header[:num_dimensions] if num_dimensions else header[:1])
 
     data = []
-    totals = None
+    for cells in reader:
+        # The data section ends at the first blank row
+        if not cells or all(not cell.strip() for cell in cells):
+            break
 
-    for row in reader:
+        # Fallback: footer block reached without a blank separator
+        if any(cells[0].strip().startswith(prefix) for prefix in FOOTER_PREFIXES):
+            break
+
+        if len(cells) < len(header):
+            cells = cells + [''] * (len(header) - len(cells))
+
         # Convert numeric strings to appropriate types, except in dimension
         # columns: dates, names and IDs stay strings so entity IDs can be
         # compared against the Display & Video 360 API's string IDs
         parsed_row = {}
-        for key, value in row.items():
-            if value is None or value == '':
+        for key, value in zip(header, cells):
+            if value == '':
                 parsed_row[key] = None
             elif key in dimension_columns:
                 parsed_row[key] = value
@@ -219,20 +239,19 @@ def parse_csv_to_json(
             else:
                 parsed_row[key] = value
 
-        # Grand total row: every dimension cell is empty
-        if dimension_columns and all(parsed_row.get(col) is None for col in dimension_columns):
-            totals = parsed_row
-            continue
-
-        # Guard against footer lines ("Report Time:", ...) in case Google
-        # ever drops the blank-line separator
-        first_cell = parsed_row.get(fieldnames[0]) if fieldnames else None
-        if isinstance(first_cell, str) and first_cell.endswith(':'):
-            continue
-
         data.append(parsed_row)
 
-    logger.info(f"Parsed {len(data)} data rows from CSV (totals row {'found' if totals else 'not found'})")
+    # The grand total is always the LAST row of the data section, with every
+    # dimension cell empty. Earlier rows with empty dimensions are real data
+    # (e.g. unattributed rows) and stay in place.
+    totals = None
+    if data and dimension_columns and all(data[-1].get(col) is None for col in dimension_columns):
+        totals_row = data.pop()
+        # Keep the full metric key set (even empty metrics) so totals stays
+        # consistent with the data rows
+        totals = {k: v for k, v in totals_row.items() if k not in dimension_columns}
+
+    logger.info(f"Parsed {len(data)} data rows from CSV (totals row {'found' if totals is not None else 'not found'})")
     return data, totals
 
 
@@ -294,7 +313,7 @@ def coerce_to_string_list(value: Optional[Union[List[str], str]]) -> List[str]:
         tokens = [token.strip().strip('[]"\'') for token in text.split(',')]
         return [token for token in tokens if token]
 
-    return [str(item).strip() for item in value]
+    return [str(item).strip() for item in value if str(item).strip()]
 
 
 def delete_query_quietly(service, query_id: str) -> None:
@@ -1376,49 +1395,54 @@ def dv_run_report(
 
         logger.info(f"Query {query_id} created. Running synchronously...")
 
-        # Run query synchronously (wait for completion)
-        report_response = service.queries().run(
-            queryId=query_id,
-            synchronous=True
-        ).execute()
+        # The stored query is deleted whichever way the run ends, so failed
+        # or interrupted runs cannot accumulate queries in Report Builder
+        try:
+            # Run query synchronously (wait for completion)
+            report_response = service.queries().run(
+                queryId=query_id,
+                synchronous=True
+            ).execute()
 
-        # Check status
-        if report_response["metadata"]["status"]["state"] == "FAILED":
-            error_msg = report_response["metadata"]["status"].get("message", "Unknown error")
-            logger.error(f"Report failed: {error_msg}")
-            delete_query_quietly(service, query_id)
+            # Check status: anything but DONE means there is no report to download
+            state = report_response["metadata"]["status"]["state"]
+            if state != "DONE":
+                error_msg = report_response["metadata"]["status"].get(
+                    "message", f"Report ended in state {state}"
+                )
+                logger.error(f"Report did not complete (state: {state}): {error_msg}")
+                return {
+                    "success": False,
+                    "error": f"Report generation failed (state: {state}): {error_msg}",
+                    "query_id": query_id
+                }
+
+            logger.info(f"Report {report_response['key']['reportId']} generated successfully")
+
+            # Download and parse CSV
+            gcs_path = report_response["metadata"]["googleCloudStoragePath"]
+            csv_content = download_csv_from_gcs(gcs_path)
+            parsed_data, totals = parse_csv_to_json(csv_content, num_dimensions=len(dimensions_list))
+
             return {
-                "success": False,
-                "error": f"Report generation failed: {error_msg}",
-                "query_id": query_id
+                "success": True,
+                "data": parsed_data,
+                "metadata": {
+                    "query_id": query_id,
+                    "report_id": report_response["key"]["reportId"],
+                    "date_range": {
+                        "start_date": start_date,
+                        "end_date": end_date
+                    },
+                    "dimensions": dimensions_list,
+                    "metrics": metrics_list,
+                    "filters": filters,
+                    "row_count": len(parsed_data),
+                    "totals": totals
+                }
             }
-
-        logger.info(f"Report {report_response['key']['reportId']} generated successfully")
-
-        # Download and parse CSV
-        gcs_path = report_response["metadata"]["googleCloudStoragePath"]
-        csv_content = download_csv_from_gcs(gcs_path)
-        parsed_data, totals = parse_csv_to_json(csv_content, num_dimensions=len(dimensions_list))
-
-        delete_query_quietly(service, query_id)
-
-        return {
-            "success": True,
-            "data": parsed_data,
-            "metadata": {
-                "query_id": query_id,
-                "report_id": report_response["key"]["reportId"],
-                "date_range": {
-                    "start_date": start_date,
-                    "end_date": end_date
-                },
-                "dimensions": dimensions_list,
-                "metrics": metrics_list,
-                "filters": filters,
-                "row_count": len(parsed_data),
-                "totals": totals
-            }
-        }
+        finally:
+            delete_query_quietly(service, query_id)
 
     except Exception as e:
         logger.error(f"Error running report: {str(e)}", exc_info=True)
